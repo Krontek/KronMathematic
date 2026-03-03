@@ -119,17 +119,17 @@ static float atan_core(float x) {
  * Basic Math – Float
  * ========================================================= */
 
-float KRON_ADD(float a, float b)  { return a + b; }
-float KRON_SUB(float a, float b)  { return a - b; }
-float KRON_MUL(float a, float b)  { return a * b; }
+float KRON_ADD_F(float a, float b)  { return a + b; }
+float KRON_SUB_F(float a, float b)  { return a - b; }
+float KRON_MUL_F(float a, float b)  { return a * b; }
 
-float KRON_DIV(float a, float b) {
+float KRON_DIV_F(float a, float b) {
     if (b == 0.0f) return 0.0f;
     return a / b;
 }
 
-float KRON_MOD(float a, float b)  { return kron_fmodf(a, b); }
-float KRON_MOVE(float a)          { return a; }
+float KRON_MOD_F(float a, float b)  { return kron_fmodf(a, b); }
+float KRON_MOVE_F(float a)          { return a; }
 
 /* =========================================================
  * Basic Math – Integer (DINT)
@@ -155,9 +155,8 @@ int32_t KRON_MOVE_I(int32_t a) { return a; }
  * Floating Point Functions
  * ========================================================= */
 
-float KRON_ABS(float x) {
-    return kron_fabsf(x);
-}
+float   KRON_ABS_F(float x)   { return kron_fabsf(x); }
+int32_t KRON_ABS_I(int32_t x) { return (x < 0) ? -x : x; }
 
 /* Newton-Raphson SQRT.
  * Initial guess via bit-manipulation on IEEE 754 representation;

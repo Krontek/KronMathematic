@@ -191,6 +191,55 @@ static void test_consistency(void) {
 }
 
 /* ─────────────────────────────────────────────
+ * _Generic dispatch verification
+ * ───────────────────────────────────────────── */
+static void test_generic_dispatch(void) {
+    printf("\n--- _Generic type dispatch ---\n");
+
+    /* ADD */
+    float   add_f = KRON_ADD(3.0f,       2.0f);
+    int32_t add_i = KRON_ADD((int32_t)3, (int32_t)2);
+    int16_t a16   = 3, b16 = 2;
+    int32_t add_16 = KRON_ADD(a16, b16);
+    check("ADD float  dispatch: 3.0f + 2.0f = 5.0f",    feq(add_f,  5.0f, 1e-6f));
+    check("ADD int32  dispatch: 3 + 2 = 5",              add_i  == 5);
+    check("ADD int16  dispatch: 3 + 2 = 5",              add_16 == 5);
+
+    /* SUB */
+    check("SUB float  dispatch: 7.5f - 2.5f = 5.0f",    feq(KRON_SUB(7.5f, 2.5f),           5.0f, 1e-6f));
+    check("SUB int32  dispatch: 10 - 4 = 6",             KRON_SUB((int32_t)10,(int32_t)4) ==  6);
+
+    /* MUL */
+    check("MUL float  dispatch: 2.0f * 3.0f = 6.0f",    feq(KRON_MUL(2.0f, 3.0f),           6.0f, 1e-6f));
+    check("MUL int32  dispatch: 6 * 7 = 42",             KRON_MUL((int32_t)6,(int32_t)7) == 42);
+
+    /* DIV */
+    check("DIV float  dispatch: 9.0f / 4.0f = 2.25f",   feq(KRON_DIV(9.0f, 4.0f),           2.25f, 1e-6f));
+    check("DIV int32  dispatch: 9 / 4 = 2 (truncate)",  KRON_DIV((int32_t)9,(int32_t)4) ==  2);
+    check("DIV int32  by zero = 0",                       KRON_DIV((int32_t)9,(int32_t)0) ==  0);
+
+    /* MOD */
+    check("MOD float  dispatch: 7.5f % 3.0f = 1.5f",    feq(KRON_MOD(7.5f, 3.0f),           1.5f, 1e-6f));
+    check("MOD int32  dispatch: 17 % 5 = 2",             KRON_MOD((int32_t)17,(int32_t)5) == 2);
+
+    /* MOVE */
+    check("MOVE float  dispatch: 3.14f",                  feq(KRON_MOVE(3.14f),               3.14f, 1e-6f));
+    check("MOVE int32  dispatch: 42",                     KRON_MOVE((int32_t)42) == 42);
+
+    /* ABS */
+    check("ABS float  dispatch: -3.5f -> 3.5f",          feq(KRON_ABS(-3.5f),                3.5f, 1e-6f));
+    check("ABS int32  dispatch: -7 -> 7",                 KRON_ABS((int32_t)-7) == 7);
+    check("ABS int16  dispatch: -100 -> 100",             KRON_ABS((int16_t)-100) == 100);
+    check("ABS uint8  dispatch: 200 -> 200",              KRON_ABS((uint8_t)200) == 200);
+
+    /* uint types */
+    check("ADD uint16 dispatch: 10 + 5 = 15",
+          KRON_ADD((uint16_t)10, (uint16_t)5) == 15);
+    check("MUL uint32 dispatch: 3 * 4 = 12",
+          KRON_MUL((uint32_t)3, (uint32_t)4) == 12);
+}
+
+/* ─────────────────────────────────────────────
  * main
  * ───────────────────────────────────────────── */
 int main(void) {
@@ -203,6 +252,7 @@ int main(void) {
     test_float_functions();
     test_trig();
     test_consistency();
+    test_generic_dispatch();
 
     printf("\n========================================\n");
     printf("  Results: %d passed, %d failed\n", pass_count, fail_count);
