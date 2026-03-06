@@ -1,18 +1,14 @@
 /*===========================================================================
- * KronMathematic — Math Function Blocks (IEC 61131-3)
+ * KronMathematic — Integer Math Function Blocks (IEC 61131-3)
  *
- * All blocks follow the PLC function block pattern:
- *   Inputs:  EN, IN (or IN1/IN2 for binary ops)
- *   Outputs: ENO, OUT
+ * PLC integer arithmetic. All operations work on int32_t (DINT).
+ * Input types (USINT, UINT, UDINT, SINT, INT, DINT) are implicitly
+ * promoted to int32_t when assigned to IN fields.
  *
- * EN = true  → execute, ENO = true
- * EN = false → skip, ENO = false (OUT unchanged)
+ * Multi-input blocks (ADD, MUL, MIN, MAX) accept up to
+ * KRON_MATH_MAX_IN inputs via IN[] array + N count.
  *
- * Typed variants:
- *   _F suffix → float   (IEC REAL)
- *   _I suffix → int32_t (IEC DINT)
- *
- * No external dependencies. C99. Baremetal Cortex-M4 compatible.
+ * No external dependencies. C99. PLC / baremetal compatible.
  *===========================================================================*/
 
 #ifndef KRONMATH_H
@@ -21,165 +17,201 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Math constants */
-#define KRON_PI      3.14159265f
-#define KRON_HALF_PI 1.57079633f
-#define KRON_TWO_PI  6.28318531f
-#define KRON_E       2.71828183f
+/*
+ * PLC Integer Type Mapping (IEC 61131-3, 32-bit max):
+ *   USINT  → uint8_t   (8-bit unsigned,  0 .. 255)
+ *   UINT   → uint16_t  (16-bit unsigned, 0 .. 65535)
+ *   UDINT  → uint32_t  (32-bit unsigned, 0 .. 4294967295)
+ *   SINT   → int8_t    (8-bit signed,   -128 .. 127)
+ *   INT    → int16_t   (16-bit signed,  -32768 .. 32767)
+ *   DINT   → int32_t   (32-bit signed,  -2147483648 .. 2147483647)
+ *
+ * All function blocks use int32_t internally.
+ * Assign any of the above types to IN fields; C promotes automatically.
+ */
+
+#define KRON_MATH_MAX_IN 32
 
 /* =========================================================
- * ADD  (EN, IN1, IN2 → ENO, OUT)
+ * ADD — Sum of N inputs
+ * OUT = IN[0] + IN[1] + ... + IN[N-1]
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN1; float   IN2;
-    bool  ENO; float   OUT;
-} ADD_F;
-
-typedef struct {
-    bool  EN;  int32_t IN1; int32_t IN2;
-    bool  ENO; int32_t OUT;
-} ADD_I;
-
-void ADD_F_Call(ADD_F *inst);
-void ADD_I_Call(ADD_I *inst);
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Sum result (32-bit)
+} ADD;
 
 /* =========================================================
- * SUB  (EN, IN1, IN2 → ENO, OUT)
+ * SUB — Subtraction
+ * OUT = IN1 - IN2
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN1; float   IN2;
-    bool  ENO; float   OUT;
-} SUB_F;
-
-typedef struct {
-    bool  EN;  int32_t IN1; int32_t IN2;
-    bool  ENO; int32_t OUT;
-} SUB_I;
-
-void SUB_F_Call(SUB_F *inst);
-void SUB_I_Call(SUB_I *inst);
+    int32_t IN1;    // Minuend (32-bit)
+    int32_t IN2;    // Subtrahend (32-bit)
+    int32_t OUT;    // Difference (32-bit)
+} SUB;
 
 /* =========================================================
- * MUL  (EN, IN1, IN2 → ENO, OUT)
+ * MUL — Product of N inputs
+ * OUT = IN[0] * IN[1] * ... * IN[N-1]
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN1; float   IN2;
-    bool  ENO; float   OUT;
-} MUL_F;
-
-typedef struct {
-    bool  EN;  int32_t IN1; int32_t IN2;
-    bool  ENO; int32_t OUT;
-} MUL_I;
-
-void MUL_F_Call(MUL_F *inst);
-void MUL_I_Call(MUL_I *inst);
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Product result (32-bit)
+} MUL;
 
 /* =========================================================
- * DIV  (EN, IN1, IN2 → ENO, OUT)
- * ENO = false on div-by-zero
+ * DIV — Integer division
+ * OUT = IN1 / IN2, ERR = true on division by zero
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN1; float   IN2;
-    bool  ENO; float   OUT;
-} DIV_F;
-
-typedef struct {
-    bool  EN;  int32_t IN1; int32_t IN2;
-    bool  ENO; int32_t OUT;
-} DIV_I;
-
-void DIV_F_Call(DIV_F *inst);
-void DIV_I_Call(DIV_I *inst);
+    int32_t IN1;    // Dividend (32-bit)
+    int32_t IN2;    // Divisor (32-bit)
+    int32_t OUT;    // Quotient (32-bit)
+    bool    ERR;    // Error flag: division by zero (1-bit / 8-bit)
+} DIV;
 
 /* =========================================================
- * MOD  (EN, IN1, IN2 → ENO, OUT)
- * ENO = false on div-by-zero
+ * MOD — Integer modulo
+ * OUT = IN1 % IN2, ERR = true on division by zero
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN1; float   IN2;
-    bool  ENO; float   OUT;
-} MOD_F;
-
-typedef struct {
-    bool  EN;  int32_t IN1; int32_t IN2;
-    bool  ENO; int32_t OUT;
-} MOD_I;
-
-void MOD_F_Call(MOD_F *inst);
-void MOD_I_Call(MOD_I *inst);
+    int32_t IN1;    // Dividend (32-bit)
+    int32_t IN2;    // Divisor (32-bit)
+    int32_t OUT;    // Remainder (32-bit)
+    bool    ERR;    // Error flag: division by zero (1-bit / 8-bit)
+} MOD;
 
 /* =========================================================
- * MOVE  (EN, IN → ENO, OUT)
+ * ABS — Absolute value
+ * OUT = |IN|
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN;
-    bool  ENO; float   OUT;
-} MOVE_F;
-
-typedef struct {
-    bool  EN;  int32_t IN;
-    bool  ENO; int32_t OUT;
-} MOVE_I;
-
-void MOVE_F_Call(MOVE_F *inst);
-void MOVE_I_Call(MOVE_I *inst);
+    int32_t IN;     // Input (32-bit)
+    int32_t OUT;    // |IN| (32-bit)
+} ABS_FB;
 
 /* =========================================================
- * ABS  (EN, IN → ENO, OUT)
+ * NEG — Negation
+ * OUT = -IN
  * ========================================================= */
 typedef struct {
-    bool  EN;  float   IN;
-    bool  ENO; float   OUT;
-} ABS_F;
-
-typedef struct {
-    bool  EN;  int32_t IN;
-    bool  ENO; int32_t OUT;
-} ABS_I;
-
-void ABS_F_Call(ABS_F *inst);
-void ABS_I_Call(ABS_I *inst);
+    int32_t IN;     // Input (32-bit)
+    int32_t OUT;    // -IN (32-bit)
+} NEG;
 
 /* =========================================================
- * SQRT  (EN, IN → ENO, OUT)
- * ENO = false for negative input
+ * MOVE — Copy value
+ * OUT = IN
  * ========================================================= */
 typedef struct {
-    bool  EN;  float IN;
-    bool  ENO; float OUT;
+    int32_t IN;     // Input (32-bit)
+    int32_t OUT;    // Copy of IN (32-bit)
+} MOVE;
+
+/* =========================================================
+ * SQRT — Integer square root (floor)
+ * OUT = floor(sqrt(IN)), ERR = true for negative input
+ * ========================================================= */
+typedef struct {
+    int32_t IN;     // Input (32-bit)
+    int32_t OUT;    // floor(sqrt(IN)) (32-bit)
+    bool    ERR;    // Error flag: negative input (1-bit / 8-bit)
 } SQRT_FB;
 
-void SQRT_Call(SQRT_FB *inst);
-
 /* =========================================================
- * EXPT  (EN, IN1, IN2 → ENO, OUT)
- * IN1 = base, IN2 = exponent
- * ENO = false for negative base
+ * EXPT — Integer exponentiation
+ * OUT = IN1 ^ IN2, ERR = true for negative exponent
  * ========================================================= */
 typedef struct {
-    bool  EN;  float IN1; float IN2;
-    bool  ENO; float OUT;
-} EXPT_FB;
-
-void EXPT_Call(EXPT_FB *inst);
+    int32_t IN1;    // Base (32-bit)
+    int32_t IN2;    // Exponent, must be >= 0 (32-bit)
+    int32_t OUT;    // Result (32-bit)
+    bool    ERR;    // Error flag: negative exponent (1-bit / 8-bit)
+} EXPT;
 
 /* =========================================================
- * Trigonometric Functions  (EN, IN → ENO, OUT)
- * Angles in radians
+ * MIN — Minimum of N inputs
+ * OUT = smallest value among IN[0..N-1]
  * ========================================================= */
-typedef struct { bool EN; float IN; bool ENO; float OUT; } SIN_FB;
-typedef struct { bool EN; float IN; bool ENO; float OUT; } COS_FB;
-typedef struct { bool EN; float IN; bool ENO; float OUT; } TAN_FB;
-typedef struct { bool EN; float IN; bool ENO; float OUT; } ASIN_FB;
-typedef struct { bool EN; float IN; bool ENO; float OUT; } ACOS_FB;
-typedef struct { bool EN; float IN; bool ENO; float OUT; } ATAN_FB;
+typedef struct {
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Minimum value (32-bit)
+} MIN_FB;
 
-void SIN_Call (SIN_FB  *inst);
-void COS_Call (COS_FB  *inst);
-void TAN_Call (TAN_FB  *inst);
-void ASIN_Call(ASIN_FB *inst);  /* IN clamped to [-1, 1] */
-void ACOS_Call(ACOS_FB *inst);  /* IN clamped to [-1, 1] */
-void ATAN_Call(ATAN_FB *inst);
+/* =========================================================
+ * MAX — Maximum of N inputs
+ * OUT = largest value among IN[0..N-1]
+ * ========================================================= */
+typedef struct {
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Maximum value (32-bit)
+} MAX_FB;
+
+/* =========================================================
+ * LIMIT — Clamp value between bounds
+ * OUT = MN if IN < MN, MX if IN > MX, else IN
+ * ========================================================= */
+typedef struct {
+    int32_t MN;     // Minimum bound (32-bit)
+    int32_t IN;     // Input (32-bit)
+    int32_t MX;     // Maximum bound (32-bit)
+    int32_t OUT;    // Clamped result (32-bit)
+} LIMIT;
+
+/* =========================================================
+ * SEL — Binary selector
+ * OUT = G ? IN1 : IN0
+ * ========================================================= */
+typedef struct {
+    bool    G;      // Selector (1-bit / 8-bit)
+    int32_t IN0;    // Value when G = false (32-bit)
+    int32_t IN1;    // Value when G = true (32-bit)
+    int32_t OUT;    // Selected value (32-bit)
+} SEL;
+
+/* =========================================================
+ * MUX — Multiplexer (select from N inputs by index)
+ * OUT = IN[K], ERR = true if K >= N
+ * ========================================================= */
+typedef struct {
+    uint8_t K;                     // Selector index
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Selected value (32-bit)
+    bool    ERR;                   // Error flag: K out of range (1-bit / 8-bit)
+} MUX;
+
+/* =========================================================
+ * AVG — Average of N inputs (integer, truncated)
+ * OUT = (IN[0] + IN[1] + ... + IN[N-1]) / N
+ * ========================================================= */
+typedef struct {
+    int32_t IN[KRON_MATH_MAX_IN]; // Input values (32-bit each)
+    uint8_t N;                     // Number of active inputs
+    int32_t OUT;                   // Average result (32-bit)
+} AVG;
+
+/* Function Prototypes */
+void ADD_Call  (ADD     *inst);
+void SUB_Call  (SUB     *inst);
+void MUL_Call  (MUL     *inst);
+void DIV_Call  (DIV     *inst);
+void MOD_Call  (MOD     *inst);
+void ABS_Call  (ABS_FB  *inst);
+void NEG_Call  (NEG     *inst);
+void MOVE_Call (MOVE    *inst);
+void SQRT_Call (SQRT_FB *inst);
+void EXPT_Call (EXPT    *inst);
+void MIN_Call  (MIN_FB  *inst);
+void MAX_Call  (MAX_FB  *inst);
+void LIMIT_Call(LIMIT   *inst);
+void SEL_Call  (SEL     *inst);
+void MUX_Call  (MUX     *inst);
+void AVG_Call  (AVG     *inst);
 
 #endif /* KRONMATH_H */

@@ -14,353 +14,422 @@ static void check(const char *name, int condition) {
     }
 }
 
-/* Float comparison within epsilon */
-static int feq(float a, float b, float eps) {
-    float diff = a - b;
-    if (diff < 0.0f) diff = -diff;
-    return diff <= eps;
+// ─────────────────────────────────────────────
+// ADD
+// ─────────────────────────────────────────────
+static void test_ADD(void) {
+    printf("\n--- ADD (Sum of N inputs) ---\n");
+
+    ADD a = {0};
+    a.IN[0] = 10; a.IN[1] = 20; a.IN[2] = 30;
+    a.N = 3;
+    ADD_Call(&a);
+    check("10 + 20 + 30 = 60", a.OUT == 60);
+
+    ADD a2 = {0};
+    a2.IN[0] = -5; a2.IN[1] = 3; a2.IN[2] = -8; a2.IN[3] = 10;
+    a2.N = 4;
+    ADD_Call(&a2);
+    check("-5 + 3 + -8 + 10 = 0", a2.OUT == 0);
+
+    // USINT-range values
+    ADD a3 = {0};
+    a3.IN[0] = 200; a3.IN[1] = 55;
+    a3.N = 2;
+    ADD_Call(&a3);
+    check("USINT range: 200 + 55 = 255", a3.OUT == 255);
+
+    // Single input
+    ADD a4 = {0};
+    a4.IN[0] = 42;
+    a4.N = 1;
+    ADD_Call(&a4);
+    check("Single input: 42", a4.OUT == 42);
 }
 
-/* ─────────────────────────────────────────────
- * Basic Math – Float
- * ───────────────────────────────────────────── */
-static void test_basic_float(void) {
-    printf("\n--- Basic Math (Float) ---\n");
+// ─────────────────────────────────────────────
+// SUB
+// ─────────────────────────────────────────────
+static void test_SUB(void) {
+    printf("\n--- SUB (Subtraction) ---\n");
 
-    ADD_F add = { .EN = true, .IN1 = 2.5f, .IN2 = 1.5f };
-    ADD_F_Call(&add);
-    check("ADD  2.5 + 1.5 = 4.0",   add.ENO && feq(add.OUT, 4.0f, 1e-6f));
+    SUB s = { .IN1 = 100, .IN2 = 37 };
+    SUB_Call(&s);
+    check("100 - 37 = 63", s.OUT == 63);
 
-    SUB_F sub = { .EN = true, .IN1 = 5.0f, .IN2 = 3.2f };
-    SUB_F_Call(&sub);
-    check("SUB  5.0 - 3.2 = 1.8",   sub.ENO && feq(sub.OUT, 1.8f, 1e-5f));
+    SUB s2 = { .IN1 = -10, .IN2 = -30 };
+    SUB_Call(&s2);
+    check("-10 - (-30) = 20", s2.OUT == 20);
 
-    MUL_F mul = { .EN = true, .IN1 = 3.0f, .IN2 = 4.0f };
-    MUL_F_Call(&mul);
-    check("MUL  3.0 * 4.0 = 12.0",  mul.ENO && feq(mul.OUT, 12.0f, 1e-6f));
-
-    DIV_F div1 = { .EN = true, .IN1 = 9.0f, .IN2 = 3.0f };
-    DIV_F_Call(&div1);
-    check("DIV  9.0 / 3.0 = 3.0",   div1.ENO && feq(div1.OUT, 3.0f, 1e-6f));
-
-    DIV_F div0 = { .EN = true, .IN1 = 5.0f, .IN2 = 0.0f };
-    DIV_F_Call(&div0);
-    check("DIV  by zero: ENO=false", !div0.ENO && feq(div0.OUT, 0.0f, 1e-9f));
-
-    MOD_F mod1 = { .EN = true, .IN1 = 7.5f, .IN2 = 3.0f };
-    MOD_F_Call(&mod1);
-    check("MOD  7.5 % 3.0 = 1.5",   mod1.ENO && feq(mod1.OUT, 1.5f, 1e-6f));
-
-    MOD_F mod2 = { .EN = true, .IN1 = -7.5f, .IN2 = 3.0f };
-    MOD_F_Call(&mod2);
-    check("MOD -7.5 % 3.0 = -1.5",  mod2.ENO && feq(mod2.OUT, -1.5f, 1e-6f));
-
-    MOD_F mod0 = { .EN = true, .IN1 = 5.0f, .IN2 = 0.0f };
-    MOD_F_Call(&mod0);
-    check("MOD  by zero: ENO=false", !mod0.ENO && feq(mod0.OUT, 0.0f, 1e-9f));
-
-    MOVE_F mov = { .EN = true, .IN = 3.14f };
-    MOVE_F_Call(&mov);
-    check("MOVE 3.14 = 3.14",       mov.ENO && feq(mov.OUT, 3.14f, 1e-6f));
+    SUB s3 = { .IN1 = 0, .IN2 = 32767 };
+    SUB_Call(&s3);
+    check("0 - 32767 = -32767", s3.OUT == -32767);
 }
 
-/* ─────────────────────────────────────────────
- * Basic Math – Integer
- * ───────────────────────────────────────────── */
-static void test_basic_int(void) {
-    printf("\n--- Basic Math (Integer / DINT) ---\n");
+// ─────────────────────────────────────────────
+// MUL
+// ─────────────────────────────────────────────
+static void test_MUL(void) {
+    printf("\n--- MUL (Product of N inputs) ---\n");
 
-    ADD_I add1 = { .EN = true, .IN1 = 7, .IN2 = 3 };
-    ADD_I_Call(&add1);
-    check("ADD_I   7 + 3 = 10",    add1.ENO && add1.OUT == 10);
+    MUL m = {0};
+    m.IN[0] = 2; m.IN[1] = 3; m.IN[2] = 4;
+    m.N = 3;
+    MUL_Call(&m);
+    check("2 * 3 * 4 = 24", m.OUT == 24);
 
-    ADD_I add2 = { .EN = true, .IN1 = -4, .IN2 = 1 };
-    ADD_I_Call(&add2);
-    check("ADD_I  -4 + 1 = -3",    add2.ENO && add2.OUT == -3);
+    MUL m2 = {0};
+    m2.IN[0] = -1; m2.IN[1] = 50;
+    m2.N = 2;
+    MUL_Call(&m2);
+    check("-1 * 50 = -50", m2.OUT == -50);
 
-    SUB_I sub = { .EN = true, .IN1 = 10, .IN2 = 4 };
-    SUB_I_Call(&sub);
-    check("SUB_I  10 - 4 = 6",     sub.ENO && sub.OUT == 6);
-
-    MUL_I mul = { .EN = true, .IN1 = 6, .IN2 = 7 };
-    MUL_I_Call(&mul);
-    check("MUL_I   6 * 7 = 42",    mul.ENO && mul.OUT == 42);
-
-    DIV_I div1 = { .EN = true, .IN1 = 15, .IN2 = 4 };
-    DIV_I_Call(&div1);
-    check("DIV_I  15 / 4 = 3",     div1.ENO && div1.OUT == 3);
-
-    DIV_I div0 = { .EN = true, .IN1 = 9, .IN2 = 0 };
-    DIV_I_Call(&div0);
-    check("DIV_I  by zero: ENO=false", !div0.ENO && div0.OUT == 0);
-
-    MOD_I mod1 = { .EN = true, .IN1 = 17, .IN2 = 5 };
-    MOD_I_Call(&mod1);
-    check("MOD_I  17 % 5 = 2",     mod1.ENO && mod1.OUT == 2);
-
-    MOD_I mod2 = { .EN = true, .IN1 = -17, .IN2 = 5 };
-    MOD_I_Call(&mod2);
-    check("MOD_I -17 % 5 = -2",    mod2.ENO && mod2.OUT == -2);
-
-    MOD_I mod0 = { .EN = true, .IN1 = 9, .IN2 = 0 };
-    MOD_I_Call(&mod0);
-    check("MOD_I  by zero: ENO=false", !mod0.ENO && mod0.OUT == 0);
-
-    MOVE_I mov = { .EN = true, .IN = 42 };
-    MOVE_I_Call(&mov);
-    check("MOVE_I 42 = 42",        mov.ENO && mov.OUT == 42);
+    MUL m3 = {0};
+    m3.IN[0] = 1000; m3.IN[1] = 1000;
+    m3.N = 2;
+    MUL_Call(&m3);
+    check("1000 * 1000 = 1000000", m3.OUT == 1000000);
 }
 
-/* ─────────────────────────────────────────────
- * EN = false tests
- * ───────────────────────────────────────────── */
-static void test_en_disabled(void) {
-    printf("\n--- EN = false (disabled) ---\n");
+// ─────────────────────────────────────────────
+// DIV
+// ─────────────────────────────────────────────
+static void test_DIV(void) {
+    printf("\n--- DIV (Division) ---\n");
 
-    ADD_F add = { .EN = false, .IN1 = 2.5f, .IN2 = 1.5f, .OUT = 99.0f };
-    ADD_F_Call(&add);
-    check("ADD_F EN=false: ENO=false, OUT unchanged",
-          !add.ENO && feq(add.OUT, 99.0f, 1e-9f));
+    DIV d = { .IN1 = 100, .IN2 = 4 };
+    DIV_Call(&d);
+    check("100 / 4 = 25", d.OUT == 25 && !d.ERR);
 
-    MOVE_I mov = { .EN = false, .IN = 42, .OUT = 99 };
-    MOVE_I_Call(&mov);
-    check("MOVE_I EN=false: ENO=false, OUT unchanged",
-          !mov.ENO && mov.OUT == 99);
+    DIV d2 = { .IN1 = 7, .IN2 = 2 };
+    DIV_Call(&d2);
+    check("7 / 2 = 3 (truncated)", d2.OUT == 3 && !d2.ERR);
 
-    SIN_FB sf = { .EN = false, .IN = 1.0f, .OUT = 99.0f };
-    SIN_Call(&sf);
-    check("SIN EN=false: ENO=false, OUT unchanged",
-          !sf.ENO && feq(sf.OUT, 99.0f, 1e-9f));
+    DIV d3 = { .IN1 = -15, .IN2 = 4 };
+    DIV_Call(&d3);
+    check("-15 / 4 = -3", d3.OUT == -3 && !d3.ERR);
 
-    SQRT_FB sq = { .EN = false, .IN = 4.0f, .OUT = 99.0f };
-    SQRT_Call(&sq);
-    check("SQRT EN=false: ENO=false, OUT unchanged",
-          !sq.ENO && feq(sq.OUT, 99.0f, 1e-9f));
+    DIV d0 = { .IN1 = 10, .IN2 = 0 };
+    DIV_Call(&d0);
+    check("Div by zero: ERR=true", d0.ERR && d0.OUT == 0);
 }
 
-/* ─────────────────────────────────────────────
- * ABS, SQRT, EXPT
- * ───────────────────────────────────────────── */
-static void test_float_functions(void) {
-    printf("\n--- ABS ---\n");
+// ─────────────────────────────────────────────
+// MOD
+// ─────────────────────────────────────────────
+static void test_MOD(void) {
+    printf("\n--- MOD (Modulo) ---\n");
 
-    ABS_F a1 = { .EN = true, .IN =  3.5f }; ABS_F_Call(&a1);
-    check("ABS  3.5 = 3.5",   a1.ENO && feq(a1.OUT, 3.5f, 1e-6f));
+    MOD m = { .IN1 = 17, .IN2 = 5 };
+    MOD_Call(&m);
+    check("17 %% 5 = 2", m.OUT == 2 && !m.ERR);
 
-    ABS_F a2 = { .EN = true, .IN = -3.5f }; ABS_F_Call(&a2);
-    check("ABS -3.5 = 3.5",   a2.ENO && feq(a2.OUT, 3.5f, 1e-6f));
+    MOD m2 = { .IN1 = -17, .IN2 = 5 };
+    MOD_Call(&m2);
+    check("-17 %% 5 = -2", m2.OUT == -2 && !m2.ERR);
 
-    ABS_F a3 = { .EN = true, .IN =  0.0f }; ABS_F_Call(&a3);
-    check("ABS  0.0 = 0.0",   a3.ENO && feq(a3.OUT, 0.0f, 1e-9f));
-
-    printf("\n--- SQRT ---\n");
-    SQRT_FB s1 = { .EN = true, .IN = 4.0f };  SQRT_Call(&s1);
-    check("SQRT  4.0 = 2.0",      s1.ENO && feq(s1.OUT, 2.0f, 1e-5f));
-
-    SQRT_FB s2 = { .EN = true, .IN = 9.0f };  SQRT_Call(&s2);
-    check("SQRT  9.0 = 3.0",      s2.ENO && feq(s2.OUT, 3.0f, 1e-5f));
-
-    SQRT_FB s3 = { .EN = true, .IN = 2.0f };  SQRT_Call(&s3);
-    check("SQRT  2.0 = 1.41421",  s3.ENO && feq(s3.OUT, 1.41421356f, 1e-5f));
-
-    SQRT_FB s4 = { .EN = true, .IN = 0.0f };  SQRT_Call(&s4);
-    check("SQRT  0.0 = 0.0",      s4.ENO && feq(s4.OUT, 0.0f, 1e-9f));
-
-    SQRT_FB s5 = { .EN = true, .IN = -1.0f }; SQRT_Call(&s5);
-    check("SQRT  neg: ENO=false",  !s5.ENO && feq(s5.OUT, 0.0f, 1e-9f));
-
-    SQRT_FB s6 = { .EN = true, .IN = 81.0f }; SQRT_Call(&s6);
-    check("SQRT  81.0 = 9.0",     s6.ENO && feq(s6.OUT, 9.0f, 1e-5f));
-
-    printf("\n--- EXPT ---\n");
-    EXPT_FB e1 = { .EN = true, .IN1 = 2.0f, .IN2 = 10.0f }; EXPT_Call(&e1);
-    check("EXPT  2^10 = 1024",    e1.ENO && feq(e1.OUT, 1024.0f, 0.1f));
-
-    EXPT_FB e2 = { .EN = true, .IN1 = 4.0f, .IN2 = 0.5f };  EXPT_Call(&e2);
-    check("EXPT  4^0.5 = 2.0",    e2.ENO && feq(e2.OUT, 2.0f, 1e-4f));
-
-    EXPT_FB e3 = { .EN = true, .IN1 = KRON_E, .IN2 = 1.0f }; EXPT_Call(&e3);
-    check("EXPT  e^1 ≈ 2.71828",  e3.ENO && feq(e3.OUT, KRON_E, 1e-4f));
-
-    EXPT_FB e4 = { .EN = true, .IN1 = 5.0f, .IN2 = 0.0f };  EXPT_Call(&e4);
-    check("EXPT  x^0 = 1",        e4.ENO && feq(e4.OUT, 1.0f, 1e-6f));
-
-    EXPT_FB e5 = { .EN = true, .IN1 = 0.0f, .IN2 = 0.0f };  EXPT_Call(&e5);
-    check("EXPT  0^0 = 1",        e5.ENO && feq(e5.OUT, 1.0f, 1e-9f));
-
-    EXPT_FB e6 = { .EN = true, .IN1 = 0.0f, .IN2 = 1.0f };  EXPT_Call(&e6);
-    check("EXPT  0^1 = 0",        e6.ENO && feq(e6.OUT, 0.0f, 1e-9f));
-
-    EXPT_FB e7 = { .EN = true, .IN1 = -2.0f, .IN2 = 2.0f }; EXPT_Call(&e7);
-    check("EXPT  neg base: ENO=false", !e7.ENO && feq(e7.OUT, 0.0f, 1e-9f));
+    MOD m0 = { .IN1 = 10, .IN2 = 0 };
+    MOD_Call(&m0);
+    check("Mod by zero: ERR=true", m0.ERR && m0.OUT == 0);
 }
 
-/* ─────────────────────────────────────────────
- * Trigonometry
- * ───────────────────────────────────────────── */
-static void test_trig(void) {
-    SIN_FB  sf; COS_FB  cf; TAN_FB  tf;
-    ATAN_FB atf; ASIN_FB asf; ACOS_FB acf;
+// ─────────────────────────────────────────────
+// ABS
+// ─────────────────────────────────────────────
+static void test_ABS(void) {
+    printf("\n--- ABS (Absolute Value) ---\n");
 
-    printf("\n--- SIN ---\n");
-    sf = (SIN_FB){ .EN = true, .IN = 0.0f };           SIN_Call(&sf);
-    check("SIN  0        = 0.0",      sf.ENO && feq(sf.OUT, 0.0f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = KRON_PI/6.0f };   SIN_Call(&sf);
-    check("SIN  π/6      = 0.5",      sf.ENO && feq(sf.OUT, 0.5f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = KRON_PI/4.0f };   SIN_Call(&sf);
-    check("SIN  π/4      ≈ 0.70711",  sf.ENO && feq(sf.OUT, 0.70710678f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = KRON_HALF_PI };   SIN_Call(&sf);
-    check("SIN  π/2      = 1.0",      sf.ENO && feq(sf.OUT, 1.0f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = KRON_PI };        SIN_Call(&sf);
-    check("SIN  π        ≈ 0.0",      sf.ENO && feq(sf.OUT, 0.0f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = -KRON_HALF_PI };  SIN_Call(&sf);
-    check("SIN -π/2      = -1.0",     sf.ENO && feq(sf.OUT, -1.0f, 1e-5f));
-    sf = (SIN_FB){ .EN = true, .IN = 3.0f*KRON_HALF_PI }; SIN_Call(&sf);
-    check("SIN  3π/2     = -1.0",     sf.ENO && feq(sf.OUT, -1.0f, 1e-5f));
+    ABS_FB a1 = { .IN = -42 };
+    ABS_Call(&a1);
+    check("|-42| = 42", a1.OUT == 42);
 
-    printf("\n--- COS ---\n");
-    cf = (COS_FB){ .EN = true, .IN = 0.0f };           COS_Call(&cf);
-    check("COS  0        = 1.0",      cf.ENO && feq(cf.OUT, 1.0f, 1e-5f));
-    cf = (COS_FB){ .EN = true, .IN = KRON_PI/3.0f };   COS_Call(&cf);
-    check("COS  π/3      = 0.5",      cf.ENO && feq(cf.OUT, 0.5f, 1e-5f));
-    cf = (COS_FB){ .EN = true, .IN = KRON_PI/4.0f };   COS_Call(&cf);
-    check("COS  π/4      ≈ 0.70711",  cf.ENO && feq(cf.OUT, 0.70710678f, 1e-5f));
-    cf = (COS_FB){ .EN = true, .IN = KRON_HALF_PI };   COS_Call(&cf);
-    check("COS  π/2      ≈ 0.0",      cf.ENO && feq(cf.OUT, 0.0f, 1e-5f));
-    cf = (COS_FB){ .EN = true, .IN = KRON_PI };        COS_Call(&cf);
-    check("COS  π        = -1.0",     cf.ENO && feq(cf.OUT, -1.0f, 1e-5f));
-    cf = (COS_FB){ .EN = true, .IN = -KRON_PI/3.0f };  COS_Call(&cf);
-    check("COS -π/3      = 0.5",      cf.ENO && feq(cf.OUT, 0.5f, 1e-5f));
+    ABS_FB a2 = { .IN = 100 };
+    ABS_Call(&a2);
+    check("|100| = 100", a2.OUT == 100);
 
-    printf("\n--- TAN ---\n");
-    tf = (TAN_FB){ .EN = true, .IN = 0.0f };           TAN_Call(&tf);
-    check("TAN  0        = 0.0",      tf.ENO && feq(tf.OUT, 0.0f, 1e-5f));
-    tf = (TAN_FB){ .EN = true, .IN = KRON_PI/4.0f };   TAN_Call(&tf);
-    check("TAN  π/4      = 1.0",      tf.ENO && feq(tf.OUT, 1.0f, 1e-4f));
-    tf = (TAN_FB){ .EN = true, .IN = KRON_PI/6.0f };   TAN_Call(&tf);
-    check("TAN  π/6      ≈ 0.57735",  tf.ENO && feq(tf.OUT, 0.57735027f, 1e-4f));
-    tf = (TAN_FB){ .EN = true, .IN = -KRON_PI/4.0f };  TAN_Call(&tf);
-    check("TAN -π/4      = -1.0",     tf.ENO && feq(tf.OUT, -1.0f, 1e-4f));
-
-    printf("\n--- ATAN ---\n");
-    atf = (ATAN_FB){ .EN = true, .IN = 0.0f };         ATAN_Call(&atf);
-    check("ATAN  0       = 0.0",      atf.ENO && feq(atf.OUT, 0.0f, 1e-5f));
-    atf = (ATAN_FB){ .EN = true, .IN = 1.0f };         ATAN_Call(&atf);
-    check("ATAN  1       = π/4",      atf.ENO && feq(atf.OUT, 0.78539816f, 1e-5f));
-    atf = (ATAN_FB){ .EN = true, .IN = -1.0f };        ATAN_Call(&atf);
-    check("ATAN -1       = -π/4",     atf.ENO && feq(atf.OUT, -0.78539816f, 1e-5f));
-    atf = (ATAN_FB){ .EN = true, .IN = 0.57735027f };  ATAN_Call(&atf);
-    check("ATAN  0.57735 ≈ π/6",     atf.ENO && feq(atf.OUT, KRON_PI/6.0f, 1e-5f));
-    atf = (ATAN_FB){ .EN = true, .IN = 1e6f };         ATAN_Call(&atf);
-    check("ATAN  large   ≈ π/2",      atf.ENO && feq(atf.OUT, KRON_HALF_PI, 1e-3f));
-
-    printf("\n--- ASIN ---\n");
-    asf = (ASIN_FB){ .EN = true, .IN = 0.0f };  ASIN_Call(&asf);
-    check("ASIN  0.0    = 0.0",       asf.ENO && feq(asf.OUT, 0.0f, 1e-5f));
-    asf = (ASIN_FB){ .EN = true, .IN = 0.5f };  ASIN_Call(&asf);
-    check("ASIN  0.5    = π/6",       asf.ENO && feq(asf.OUT, 0.52359878f, 1e-4f));
-    asf = (ASIN_FB){ .EN = true, .IN = 1.0f };  ASIN_Call(&asf);
-    check("ASIN  1.0    = π/2",       asf.ENO && feq(asf.OUT, KRON_HALF_PI, 1e-5f));
-    asf = (ASIN_FB){ .EN = true, .IN = -1.0f }; ASIN_Call(&asf);
-    check("ASIN -1.0    = -π/2",      asf.ENO && feq(asf.OUT, -KRON_HALF_PI, 1e-5f));
-    asf = (ASIN_FB){ .EN = true, .IN = 1.5f };  ASIN_Call(&asf);
-    check("ASIN  clamp >1 = π/2",     asf.ENO && feq(asf.OUT, KRON_HALF_PI, 1e-5f));
-
-    printf("\n--- ACOS ---\n");
-    acf = (ACOS_FB){ .EN = true, .IN = 1.0f };  ACOS_Call(&acf);
-    check("ACOS  1.0    = 0.0",       acf.ENO && feq(acf.OUT, 0.0f, 1e-5f));
-    acf = (ACOS_FB){ .EN = true, .IN = 0.5f };  ACOS_Call(&acf);
-    check("ACOS  0.5    = π/3",       acf.ENO && feq(acf.OUT, 1.04719755f, 1e-4f));
-    acf = (ACOS_FB){ .EN = true, .IN = 0.0f };  ACOS_Call(&acf);
-    check("ACOS  0.0    = π/2",       acf.ENO && feq(acf.OUT, KRON_HALF_PI, 1e-5f));
-    acf = (ACOS_FB){ .EN = true, .IN = -1.0f }; ACOS_Call(&acf);
-    check("ACOS -1.0    = π",         acf.ENO && feq(acf.OUT, KRON_PI, 1e-4f));
-
-    printf("\n--- sin²+cos²=1 (Pythagorean identity) ---\n");
-    float angles[] = {0.0f, 0.3f, 0.7f, 1.0f, 1.5f, 2.0f, 2.8f, 3.1f};
-    int i;
-    int pyth_ok = 1;
-    for (i = 0; i < 8; i++) {
-        sf = (SIN_FB){ .EN = true, .IN = angles[i] }; SIN_Call(&sf);
-        cf = (COS_FB){ .EN = true, .IN = angles[i] }; COS_Call(&cf);
-        if (!feq(sf.OUT*sf.OUT + cf.OUT*cf.OUT, 1.0f, 1e-4f)) {
-            pyth_ok = 0;
-            printf("    FAIL at angle %.2f: sin²+cos² = %.7f\n",
-                   angles[i], sf.OUT*sf.OUT + cf.OUT*cf.OUT);
-        }
-    }
-    check("sin²+cos²=1 for 8 test angles", pyth_ok);
+    ABS_FB a3 = { .IN = 0 };
+    ABS_Call(&a3);
+    check("|0| = 0", a3.OUT == 0);
 }
 
-/* ─────────────────────────────────────────────
- * SQRT / EXPT consistency
- * ───────────────────────────────────────────── */
-static void test_consistency(void) {
-    printf("\n--- Consistency checks ---\n");
+// ─────────────────────────────────────────────
+// NEG
+// ─────────────────────────────────────────────
+static void test_NEG(void) {
+    printf("\n--- NEG (Negation) ---\n");
 
-    /* SQRT(x) == EXPT(x, 0.5) */
-    float vals[] = {1.0f, 2.0f, 4.0f, 9.0f, 16.0f, 100.0f};
-    int i;
-    int sq_ok = 1;
-    SQRT_FB sq; EXPT_FB ex;
-    for (i = 0; i < 6; i++) {
-        sq = (SQRT_FB){ .EN = true, .IN = vals[i] }; SQRT_Call(&sq);
-        ex = (EXPT_FB){ .EN = true, .IN1 = vals[i], .IN2 = 0.5f }; EXPT_Call(&ex);
-        if (!feq(sq.OUT, ex.OUT, 1e-4f)) {
-            sq_ok = 0;
-            printf("    FAIL at x=%.0f: SQRT=%.6f EXPT=%.6f\n",
-                   vals[i], sq.OUT, ex.OUT);
-        }
-    }
-    check("SQRT(x) == EXPT(x, 0.5) for 6 values", sq_ok);
+    NEG n1 = { .IN = 50 };
+    NEG_Call(&n1);
+    check("-(50) = -50", n1.OUT == -50);
 
-    /* ASIN(SIN(x)) == x for x in [-π/2, π/2] */
-    SIN_FB sf; ASIN_FB asf;
-    float ax[] = {0.0f, 0.4f, 0.8f, 1.2f, -0.5f, -1.0f};
-    int asin_ok = 1;
-    for (i = 0; i < 6; i++) {
-        sf = (SIN_FB){ .EN = true, .IN = ax[i] }; SIN_Call(&sf);
-        asf = (ASIN_FB){ .EN = true, .IN = sf.OUT }; ASIN_Call(&asf);
-        if (!feq(asf.OUT, ax[i], 1e-4f)) {
-            asin_ok = 0;
-            printf("    FAIL at x=%.2f: ASIN(SIN)=%.6f\n", ax[i], asf.OUT);
-        }
-    }
-    check("ASIN(SIN(x))==x for x in [-π/2,π/2]", asin_ok);
-
-    /* ATAN(TAN(x)) == x for x in (-π/2, π/2) */
-    TAN_FB tf; ATAN_FB atf;
-    float at[] = {0.0f, 0.3f, 0.7f, 1.0f, -0.5f, -1.2f};
-    int atan_ok = 1;
-    for (i = 0; i < 6; i++) {
-        tf = (TAN_FB){ .EN = true, .IN = at[i] }; TAN_Call(&tf);
-        atf = (ATAN_FB){ .EN = true, .IN = tf.OUT }; ATAN_Call(&atf);
-        if (!feq(atf.OUT, at[i], 1e-4f)) {
-            atan_ok = 0;
-            printf("    FAIL at x=%.2f: ATAN(TAN)=%.6f\n", at[i], atf.OUT);
-        }
-    }
-    check("ATAN(TAN(x))==x for x in (-π/2,π/2)", atan_ok);
+    NEG n2 = { .IN = -30 };
+    NEG_Call(&n2);
+    check("-(-30) = 30", n2.OUT == 30);
 }
 
-/* ─────────────────────────────────────────────
- * main
- * ───────────────────────────────────────────── */
+// ─────────────────────────────────────────────
+// MOVE
+// ─────────────────────────────────────────────
+static void test_MOVE(void) {
+    printf("\n--- MOVE (Copy) ---\n");
+
+    MOVE m = { .IN = 12345 };
+    MOVE_Call(&m);
+    check("MOVE 12345 = 12345", m.OUT == 12345);
+}
+
+// ─────────────────────────────────────────────
+// SQRT
+// ─────────────────────────────────────────────
+static void test_SQRT(void) {
+    printf("\n--- SQRT (Integer Square Root) ---\n");
+
+    SQRT_FB s1 = { .IN = 25 };
+    SQRT_Call(&s1);
+    check("sqrt(25) = 5", s1.OUT == 5 && !s1.ERR);
+
+    SQRT_FB s2 = { .IN = 26 };
+    SQRT_Call(&s2);
+    check("sqrt(26) = 5 (floor)", s2.OUT == 5 && !s2.ERR);
+
+    SQRT_FB s3 = { .IN = 0 };
+    SQRT_Call(&s3);
+    check("sqrt(0) = 0", s3.OUT == 0 && !s3.ERR);
+
+    SQRT_FB s4 = { .IN = 1 };
+    SQRT_Call(&s4);
+    check("sqrt(1) = 1", s4.OUT == 1 && !s4.ERR);
+
+    SQRT_FB s5 = { .IN = -4 };
+    SQRT_Call(&s5);
+    check("sqrt(-4): ERR=true", s5.ERR && s5.OUT == 0);
+
+    SQRT_FB s6 = { .IN = 10000 };
+    SQRT_Call(&s6);
+    check("sqrt(10000) = 100", s6.OUT == 100 && !s6.ERR);
+}
+
+// ─────────────────────────────────────────────
+// EXPT
+// ─────────────────────────────────────────────
+static void test_EXPT(void) {
+    printf("\n--- EXPT (Integer Power) ---\n");
+
+    EXPT e1 = { .IN1 = 2, .IN2 = 10 };
+    EXPT_Call(&e1);
+    check("2^10 = 1024", e1.OUT == 1024 && !e1.ERR);
+
+    EXPT e2 = { .IN1 = 3, .IN2 = 0 };
+    EXPT_Call(&e2);
+    check("3^0 = 1", e2.OUT == 1 && !e2.ERR);
+
+    EXPT e3 = { .IN1 = 5, .IN2 = 1 };
+    EXPT_Call(&e3);
+    check("5^1 = 5", e3.OUT == 5 && !e3.ERR);
+
+    EXPT e4 = { .IN1 = -2, .IN2 = 3 };
+    EXPT_Call(&e4);
+    check("(-2)^3 = -8", e4.OUT == -8 && !e4.ERR);
+
+    EXPT e5 = { .IN1 = 10, .IN2 = -1 };
+    EXPT_Call(&e5);
+    check("10^(-1): ERR=true", e5.ERR);
+}
+
+// ─────────────────────────────────────────────
+// MIN / MAX
+// ─────────────────────────────────────────────
+static void test_MIN_MAX(void) {
+    printf("\n--- MIN / MAX ---\n");
+
+    MIN_FB mn = {0};
+    mn.IN[0] = 50; mn.IN[1] = -3; mn.IN[2] = 100; mn.IN[3] = 7;
+    mn.N = 4;
+    MIN_Call(&mn);
+    check("MIN(50,-3,100,7) = -3", mn.OUT == -3);
+
+    MAX_FB mx = {0};
+    mx.IN[0] = 50; mx.IN[1] = -3; mx.IN[2] = 100; mx.IN[3] = 7;
+    mx.N = 4;
+    MAX_Call(&mx);
+    check("MAX(50,-3,100,7) = 100", mx.OUT == 100);
+
+    // Single input
+    MIN_FB mn2 = {0};
+    mn2.IN[0] = 42;
+    mn2.N = 1;
+    MIN_Call(&mn2);
+    check("MIN(42) = 42", mn2.OUT == 42);
+
+    MAX_FB mx2 = {0};
+    mx2.IN[0] = 42;
+    mx2.N = 1;
+    MAX_Call(&mx2);
+    check("MAX(42) = 42", mx2.OUT == 42);
+}
+
+// ─────────────────────────────────────────────
+// LIMIT
+// ─────────────────────────────────────────────
+static void test_LIMIT(void) {
+    printf("\n--- LIMIT (Clamp) ---\n");
+
+    LIMIT lm1 = { .MN = 0, .IN = 50, .MX = 100 };
+    LIMIT_Call(&lm1);
+    check("LIMIT(0,50,100) = 50", lm1.OUT == 50);
+
+    LIMIT lm2 = { .MN = 0, .IN = -10, .MX = 100 };
+    LIMIT_Call(&lm2);
+    check("LIMIT(0,-10,100) = 0", lm2.OUT == 0);
+
+    LIMIT lm3 = { .MN = 0, .IN = 200, .MX = 100 };
+    LIMIT_Call(&lm3);
+    check("LIMIT(0,200,100) = 100", lm3.OUT == 100);
+}
+
+// ─────────────────────────────────────────────
+// SEL
+// ─────────────────────────────────────────────
+static void test_SEL(void) {
+    printf("\n--- SEL (Selector) ---\n");
+
+    SEL s1 = { .G = false, .IN0 = 10, .IN1 = 20 };
+    SEL_Call(&s1);
+    check("SEL(false,10,20) = 10", s1.OUT == 10);
+
+    SEL s2 = { .G = true, .IN0 = 10, .IN1 = 20 };
+    SEL_Call(&s2);
+    check("SEL(true,10,20) = 20", s2.OUT == 20);
+}
+
+// ─────────────────────────────────────────────
+// MUX
+// ─────────────────────────────────────────────
+static void test_MUX(void) {
+    printf("\n--- MUX (Multiplexer) ---\n");
+
+    MUX m1 = {0};
+    m1.IN[0] = 100; m1.IN[1] = 200; m1.IN[2] = 300;
+    m1.N = 3;
+    m1.K = 0;
+    MUX_Call(&m1);
+    check("MUX(K=0) = 100", m1.OUT == 100 && !m1.ERR);
+
+    m1.K = 2;
+    MUX_Call(&m1);
+    check("MUX(K=2) = 300", m1.OUT == 300 && !m1.ERR);
+
+    m1.K = 5;
+    MUX_Call(&m1);
+    check("MUX(K=5): ERR=true (out of range)", m1.ERR);
+}
+
+// ─────────────────────────────────────────────
+// AVG
+// ─────────────────────────────────────────────
+static void test_AVG(void) {
+    printf("\n--- AVG (Average) ---\n");
+
+    AVG a1 = {0};
+    a1.IN[0] = 10; a1.IN[1] = 20; a1.IN[2] = 30;
+    a1.N = 3;
+    AVG_Call(&a1);
+    check("AVG(10,20,30) = 20", a1.OUT == 20);
+
+    AVG a2 = {0};
+    a2.IN[0] = 7; a2.IN[1] = 8;
+    a2.N = 2;
+    AVG_Call(&a2);
+    check("AVG(7,8) = 7 (truncated)", a2.OUT == 7);
+}
+
+// ─────────────────────────────────────────────
+// PLC Type Promotion
+// ─────────────────────────────────────────────
+static void test_type_promotion(void) {
+    printf("\n--- PLC Type Promotion ---\n");
+
+    // USINT (uint8_t) values
+    uint8_t usint_a = 200, usint_b = 55;
+    ADD add_u = {0};
+    add_u.IN[0] = usint_a; add_u.IN[1] = usint_b;
+    add_u.N = 2;
+    ADD_Call(&add_u);
+    check("USINT: 200 + 55 = 255", add_u.OUT == 255);
+
+    // SINT (int8_t) values
+    int8_t sint_a = -100, sint_b = 50;
+    ADD add_s = {0};
+    add_s.IN[0] = sint_a; add_s.IN[1] = sint_b;
+    add_s.N = 2;
+    ADD_Call(&add_s);
+    check("SINT: -100 + 50 = -50", add_s.OUT == -50);
+
+    // UINT (uint16_t) values
+    uint16_t uint_a = 50000, uint_b = 15535;
+    ADD add_ui = {0};
+    add_ui.IN[0] = uint_a; add_ui.IN[1] = uint_b;
+    add_ui.N = 2;
+    ADD_Call(&add_ui);
+    check("UINT: 50000 + 15535 = 65535", add_ui.OUT == 65535);
+
+    // INT (int16_t) values
+    int16_t int_a = -32000, int_b = 1000;
+    SUB sub_i = { .IN1 = int_a, .IN2 = int_b };
+    SUB_Call(&sub_i);
+    check("INT: -32000 - 1000 = -33000", sub_i.OUT == -33000);
+
+    // DINT (int32_t) values
+    int32_t dint_a = 2000000000;
+    int32_t dint_b = 147483647;
+    ADD add_d = {0};
+    add_d.IN[0] = dint_a; add_d.IN[1] = dint_b;
+    add_d.N = 2;
+    ADD_Call(&add_d);
+    check("DINT: 2000000000 + 147483647 = 2147483647", add_d.OUT == 2147483647);
+
+    // UDINT (uint32_t) → stored as int32_t, works for values <= INT32_MAX
+    uint32_t udint_val = 1000000;
+    MOVE mov = { .IN = (int32_t)udint_val };
+    MOVE_Call(&mov);
+    check("UDINT: MOVE 1000000", mov.OUT == 1000000);
+
+    // Mixed types in multi-input ADD
+    uint8_t  v1 = 10;   // USINT
+    int16_t  v2 = -20;  // INT
+    int32_t  v3 = 100;  // DINT
+    uint16_t v4 = 500;  // UINT
+    ADD add_mix = {0};
+    add_mix.IN[0] = v1; add_mix.IN[1] = v2;
+    add_mix.IN[2] = v3; add_mix.IN[3] = v4;
+    add_mix.N = 4;
+    ADD_Call(&add_mix);
+    check("Mixed: 10 + (-20) + 100 + 500 = 590", add_mix.OUT == 590);
+}
+
+// ─────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────
 int main(void) {
-    printf("========================================\n");
-    printf("  KronMathematic Unit Tests\n");
-    printf("========================================\n");
+    printf("=== KronMathematic Test Suite ===\n");
 
-    test_basic_float();
-    test_basic_int();
-    test_en_disabled();
-    test_float_functions();
-    test_trig();
-    test_consistency();
+    test_ADD();
+    test_SUB();
+    test_MUL();
+    test_DIV();
+    test_MOD();
+    test_ABS();
+    test_NEG();
+    test_MOVE();
+    test_SQRT();
+    test_EXPT();
+    test_MIN_MAX();
+    test_LIMIT();
+    test_SEL();
+    test_MUX();
+    test_AVG();
+    test_type_promotion();
 
-    printf("\n========================================\n");
-    printf("  Results: %d passed, %d failed\n", pass_count, fail_count);
-    printf("========================================\n");
-
-    return (fail_count == 0) ? 0 : 1;
+    printf("\n=== Results: %d passed, %d failed ===\n", pass_count, fail_count);
+    return fail_count ? 1 : 0;
 }
