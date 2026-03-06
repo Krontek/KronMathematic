@@ -1,6 +1,24 @@
+/*===========================================================================
+ * KronMathematic — Math Function Blocks (IEC 61131-3)
+ *
+ * All blocks follow the PLC function block pattern:
+ *   Inputs:  EN, IN (or IN1/IN2 for binary ops)
+ *   Outputs: ENO, OUT
+ *
+ * EN = true  → execute, ENO = true
+ * EN = false → skip, ENO = false (OUT unchanged)
+ *
+ * Typed variants:
+ *   _F suffix → float   (IEC REAL)
+ *   _I suffix → int32_t (IEC DINT)
+ *
+ * No external dependencies. C99. Baremetal Cortex-M4 compatible.
+ *===========================================================================*/
+
 #ifndef KRONMATH_H
 #define KRONMATH_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Math constants */
@@ -10,142 +28,158 @@
 #define KRON_E       2.71828183f
 
 /* =========================================================
- * Typed function declarations
- *
- * _F suffix  → operates on float  (IEC REAL)
- * _I suffix  → operates on int32_t (IEC DINT; smaller integer
- *               types are implicitly promoted by the compiler)
+ * ADD  (EN, IN1, IN2 → ENO, OUT)
  * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN1; float   IN2;
+    bool  ENO; float   OUT;
+} ADD_F;
 
-/* Basic math – float */
-float   KRON_ADD_F  (float a, float b);
-float   KRON_SUB_F  (float a, float b);
-float   KRON_MUL_F  (float a, float b);
-float   KRON_DIV_F  (float a, float b);   /* returns 0 on div-by-zero */
-float   KRON_MOD_F  (float a, float b);   /* returns 0 on div-by-zero */
-float   KRON_MOVE_F (float a);
+typedef struct {
+    bool  EN;  int32_t IN1; int32_t IN2;
+    bool  ENO; int32_t OUT;
+} ADD_I;
 
-/* Basic math – integer (int32_t / DINT) */
-int32_t KRON_ADD_I  (int32_t a, int32_t b);
-int32_t KRON_SUB_I  (int32_t a, int32_t b);
-int32_t KRON_MUL_I  (int32_t a, int32_t b);
-int32_t KRON_DIV_I  (int32_t a, int32_t b); /* returns 0 on div-by-zero */
-int32_t KRON_MOD_I  (int32_t a, int32_t b); /* returns 0 on div-by-zero */
-int32_t KRON_MOVE_I (int32_t a);
-
-/* Absolute value */
-float   KRON_ABS_F (float x);
-int32_t KRON_ABS_I (int32_t x);
-
-/* Floating-point special functions (always float, integer inputs are
- * implicitly promoted by the compiler – no explicit overload needed) */
-float KRON_SQRT (float x);          /* returns 0 for negative input */
-float KRON_EXPT (float base, float exponent); /* returns 0 for negative base;
-                                                 KRON_EXPT(0,0) == 1 */
-
-/* Trigonometric functions – angles in radians */
-float KRON_SIN  (float x);
-float KRON_COS  (float x);
-float KRON_TAN  (float x);          /* large value near singularities */
-float KRON_ASIN (float x);          /* input clamped to [-1, 1] */
-float KRON_ACOS (float x);          /* input clamped to [-1, 1] */
-float KRON_ATAN (float x);
+void ADD_F_Call(ADD_F *inst);
+void ADD_I_Call(ADD_I *inst);
 
 /* =========================================================
- * Generic macros  (C11 _Generic)
- *
- * Dispatch table (on the type of the FIRST argument):
- *   float            → _F  (IEC REAL)
- *   int32_t          → _I  (IEC DINT  – on ARM, same type as int)
- *   uint32_t         → _I  (IEC UDINT – cast to signed)
- *   int16_t          → _I  (IEC INT)
- *   uint16_t         → _I  (IEC UINT)
- *   int8_t           → _I  (IEC SINT)
- *   uint8_t          → _I  (IEC USINT)
- *   default          → _F  (double, long, … get float conversion)
- *
- * Usage examples:
- *   KRON_ADD(3.14f,  1.0f )        → float   4.14f
- *   KRON_ADD((int32_t)3, (int32_t)4)  → int32_t 7
- *   KRON_ABS(-5)                   → int32_t 5   (on ARM where int==int32_t)
- *   KRON_ABS(-3.5f)                → float   3.5f
+ * SUB  (EN, IN1, IN2 → ENO, OUT)
  * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN1; float   IN2;
+    bool  ENO; float   OUT;
+} SUB_F;
 
-#define KRON_ADD(a, b) _Generic((a),    \
-    float:    KRON_ADD_F,               \
-    int32_t:  KRON_ADD_I,               \
-    uint32_t: KRON_ADD_I,               \
-    int16_t:  KRON_ADD_I,               \
-    uint16_t: KRON_ADD_I,               \
-    int8_t:   KRON_ADD_I,               \
-    uint8_t:  KRON_ADD_I,               \
-    default:  KRON_ADD_F                \
-)((a), (b))
+typedef struct {
+    bool  EN;  int32_t IN1; int32_t IN2;
+    bool  ENO; int32_t OUT;
+} SUB_I;
 
-#define KRON_SUB(a, b) _Generic((a),    \
-    float:    KRON_SUB_F,               \
-    int32_t:  KRON_SUB_I,               \
-    uint32_t: KRON_SUB_I,               \
-    int16_t:  KRON_SUB_I,               \
-    uint16_t: KRON_SUB_I,               \
-    int8_t:   KRON_SUB_I,               \
-    uint8_t:  KRON_SUB_I,               \
-    default:  KRON_SUB_F                \
-)((a), (b))
+void SUB_F_Call(SUB_F *inst);
+void SUB_I_Call(SUB_I *inst);
 
-#define KRON_MUL(a, b) _Generic((a),    \
-    float:    KRON_MUL_F,               \
-    int32_t:  KRON_MUL_I,               \
-    uint32_t: KRON_MUL_I,               \
-    int16_t:  KRON_MUL_I,               \
-    uint16_t: KRON_MUL_I,               \
-    int8_t:   KRON_MUL_I,               \
-    uint8_t:  KRON_MUL_I,               \
-    default:  KRON_MUL_F                \
-)((a), (b))
+/* =========================================================
+ * MUL  (EN, IN1, IN2 → ENO, OUT)
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN1; float   IN2;
+    bool  ENO; float   OUT;
+} MUL_F;
 
-#define KRON_DIV(a, b) _Generic((a),    \
-    float:    KRON_DIV_F,               \
-    int32_t:  KRON_DIV_I,               \
-    uint32_t: KRON_DIV_I,               \
-    int16_t:  KRON_DIV_I,               \
-    uint16_t: KRON_DIV_I,               \
-    int8_t:   KRON_DIV_I,               \
-    uint8_t:  KRON_DIV_I,               \
-    default:  KRON_DIV_F                \
-)((a), (b))
+typedef struct {
+    bool  EN;  int32_t IN1; int32_t IN2;
+    bool  ENO; int32_t OUT;
+} MUL_I;
 
-#define KRON_MOD(a, b) _Generic((a),    \
-    float:    KRON_MOD_F,               \
-    int32_t:  KRON_MOD_I,               \
-    uint32_t: KRON_MOD_I,               \
-    int16_t:  KRON_MOD_I,               \
-    uint16_t: KRON_MOD_I,               \
-    int8_t:   KRON_MOD_I,               \
-    uint8_t:  KRON_MOD_I,               \
-    default:  KRON_MOD_F                \
-)((a), (b))
+void MUL_F_Call(MUL_F *inst);
+void MUL_I_Call(MUL_I *inst);
 
-#define KRON_MOVE(a) _Generic((a),      \
-    float:    KRON_MOVE_F,              \
-    int32_t:  KRON_MOVE_I,              \
-    uint32_t: KRON_MOVE_I,              \
-    int16_t:  KRON_MOVE_I,              \
-    uint16_t: KRON_MOVE_I,              \
-    int8_t:   KRON_MOVE_I,              \
-    uint8_t:  KRON_MOVE_I,              \
-    default:  KRON_MOVE_F               \
-)(a)
+/* =========================================================
+ * DIV  (EN, IN1, IN2 → ENO, OUT)
+ * ENO = false on div-by-zero
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN1; float   IN2;
+    bool  ENO; float   OUT;
+} DIV_F;
 
-#define KRON_ABS(a) _Generic((a),       \
-    float:    KRON_ABS_F,               \
-    int32_t:  KRON_ABS_I,               \
-    uint32_t: KRON_ABS_I,               \
-    int16_t:  KRON_ABS_I,               \
-    uint16_t: KRON_ABS_I,               \
-    int8_t:   KRON_ABS_I,               \
-    uint8_t:  KRON_ABS_I,               \
-    default:  KRON_ABS_F                \
-)(a)
+typedef struct {
+    bool  EN;  int32_t IN1; int32_t IN2;
+    bool  ENO; int32_t OUT;
+} DIV_I;
+
+void DIV_F_Call(DIV_F *inst);
+void DIV_I_Call(DIV_I *inst);
+
+/* =========================================================
+ * MOD  (EN, IN1, IN2 → ENO, OUT)
+ * ENO = false on div-by-zero
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN1; float   IN2;
+    bool  ENO; float   OUT;
+} MOD_F;
+
+typedef struct {
+    bool  EN;  int32_t IN1; int32_t IN2;
+    bool  ENO; int32_t OUT;
+} MOD_I;
+
+void MOD_F_Call(MOD_F *inst);
+void MOD_I_Call(MOD_I *inst);
+
+/* =========================================================
+ * MOVE  (EN, IN → ENO, OUT)
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN;
+    bool  ENO; float   OUT;
+} MOVE_F;
+
+typedef struct {
+    bool  EN;  int32_t IN;
+    bool  ENO; int32_t OUT;
+} MOVE_I;
+
+void MOVE_F_Call(MOVE_F *inst);
+void MOVE_I_Call(MOVE_I *inst);
+
+/* =========================================================
+ * ABS  (EN, IN → ENO, OUT)
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float   IN;
+    bool  ENO; float   OUT;
+} ABS_F;
+
+typedef struct {
+    bool  EN;  int32_t IN;
+    bool  ENO; int32_t OUT;
+} ABS_I;
+
+void ABS_F_Call(ABS_F *inst);
+void ABS_I_Call(ABS_I *inst);
+
+/* =========================================================
+ * SQRT  (EN, IN → ENO, OUT)
+ * ENO = false for negative input
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float IN;
+    bool  ENO; float OUT;
+} SQRT_FB;
+
+void SQRT_Call(SQRT_FB *inst);
+
+/* =========================================================
+ * EXPT  (EN, IN1, IN2 → ENO, OUT)
+ * IN1 = base, IN2 = exponent
+ * ENO = false for negative base
+ * ========================================================= */
+typedef struct {
+    bool  EN;  float IN1; float IN2;
+    bool  ENO; float OUT;
+} EXPT_FB;
+
+void EXPT_Call(EXPT_FB *inst);
+
+/* =========================================================
+ * Trigonometric Functions  (EN, IN → ENO, OUT)
+ * Angles in radians
+ * ========================================================= */
+typedef struct { bool EN; float IN; bool ENO; float OUT; } SIN_FB;
+typedef struct { bool EN; float IN; bool ENO; float OUT; } COS_FB;
+typedef struct { bool EN; float IN; bool ENO; float OUT; } TAN_FB;
+typedef struct { bool EN; float IN; bool ENO; float OUT; } ASIN_FB;
+typedef struct { bool EN; float IN; bool ENO; float OUT; } ACOS_FB;
+typedef struct { bool EN; float IN; bool ENO; float OUT; } ATAN_FB;
+
+void SIN_Call (SIN_FB  *inst);
+void COS_Call (COS_FB  *inst);
+void TAN_Call (TAN_FB  *inst);
+void ASIN_Call(ASIN_FB *inst);  /* IN clamped to [-1, 1] */
+void ACOS_Call(ACOS_FB *inst);  /* IN clamped to [-1, 1] */
+void ATAN_Call(ATAN_FB *inst);
 
 #endif /* KRONMATH_H */

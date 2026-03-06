@@ -84,7 +84,6 @@ static float kron_expf(float x) {
 
 /* ─────────────────────────────────────────────────────────
  * Internal: sin on reduced domain [-π/2, π/2]
- *   Degree-9 Horner (Taylor coefficients exact for sine)
  * ───────────────────────────────────────────────────────── */
 static float sin_core(float x) {
     float x2 = x * x;
@@ -94,7 +93,6 @@ static float sin_core(float x) {
 
 /* ─────────────────────────────────────────────────────────
  * Internal: cos on reduced domain [-π/2, π/2]
- *   Degree-8 Horner (Taylor coefficients exact for cosine)
  * ───────────────────────────────────────────────────────── */
 static float cos_core(float x) {
     float x2 = x * x;
@@ -104,8 +102,6 @@ static float cos_core(float x) {
 
 /* ─────────────────────────────────────────────────────────
  * Internal: atan on [0, tan(π/8)] ≈ [0, 0.4142]
- *   Degree-15 Horner (Taylor series, 8 terms)
- *   Gives float precision on the reduced range.
  * ───────────────────────────────────────────────────────── */
 static float atan_core(float x) {
     float x2 = x * x;
@@ -115,79 +111,10 @@ static float atan_core(float x) {
            x2 *  -0.06666667f)))))));
 }
 
-/* =========================================================
- * Basic Math – Float
- * ========================================================= */
-
-float KRON_ADD_F(float a, float b)  { return a + b; }
-float KRON_SUB_F(float a, float b)  { return a - b; }
-float KRON_MUL_F(float a, float b)  { return a * b; }
-
-float KRON_DIV_F(float a, float b) {
-    if (b == 0.0f) return 0.0f;
-    return a / b;
-}
-
-float KRON_MOD_F(float a, float b)  { return kron_fmodf(a, b); }
-float KRON_MOVE_F(float a)          { return a; }
-
-/* =========================================================
- * Basic Math – Integer (DINT)
- * ========================================================= */
-
-int32_t KRON_ADD_I(int32_t a, int32_t b)  { return a + b; }
-int32_t KRON_SUB_I(int32_t a, int32_t b)  { return a - b; }
-int32_t KRON_MUL_I(int32_t a, int32_t b)  { return a * b; }
-
-int32_t KRON_DIV_I(int32_t a, int32_t b) {
-    if (b == 0) return 0;
-    return a / b;
-}
-
-int32_t KRON_MOD_I(int32_t a, int32_t b) {
-    if (b == 0) return 0;
-    return a % b;
-}
-
-int32_t KRON_MOVE_I(int32_t a) { return a; }
-
-/* =========================================================
- * Floating Point Functions
- * ========================================================= */
-
-float   KRON_ABS_F(float x)   { return kron_fabsf(x); }
-int32_t KRON_ABS_I(int32_t x) { return (x < 0) ? -x : x; }
-
-/* Newton-Raphson SQRT.
- * Initial guess via bit-manipulation on IEEE 754 representation;
- * 4 iterations give full float precision. */
-float KRON_SQRT(float x) {
-    if (x <= 0.0f) return 0.0f;
-
-    union { float f; uint32_t u; } v;
-    v.f = x;
-    v.u = 0x1fbd1df5u + (v.u >> 1u); /* initial estimate */
-    float g = v.f;
-
-    g = 0.5f * (g + x / g);
-    g = 0.5f * (g + x / g);
-    g = 0.5f * (g + x / g);
-    g = 0.5f * (g + x / g);
-    return g;
-}
-
-float KRON_EXPT(float base, float exponent) {
-    if (base < 0.0f)  return 0.0f;           /* undefined for negative base */
-    if (base == 0.0f) return (exponent == 0.0f) ? 1.0f : 0.0f;
-    return kron_expf(exponent * kron_logf(base));
-}
-
-/* =========================================================
- * Trigonometric Functions
- * ========================================================= */
-
-/* Reduce x to [-π, π] then to [-π/2, π/2], apply sin_core. */
-float KRON_SIN(float x) {
+/* ─────────────────────────────────────────────────────────
+ * Internal: full-range sin
+ * ───────────────────────────────────────────────────────── */
+static float kron_sinf(float x) {
     x = kron_fmodf(x, KRON_TWO_PI);
     if      (x >  KRON_PI) x -= KRON_TWO_PI;
     else if (x < -KRON_PI) x += KRON_TWO_PI;
@@ -198,48 +125,36 @@ float KRON_SIN(float x) {
     return sin_core(x);
 }
 
-/* Reduce then apply cos_core with appropriate sign correction.
- * For |x| in (π/4, π/2] use sin_core(π/2 - |x|) to avoid
- * catastrophic cancellation near the zero of cosine. */
-float KRON_COS(float x) {
+/* ─────────────────────────────────────────────────────────
+ * Internal: full-range cos
+ * ───────────────────────────────────────────────────────── */
+static float kron_cosf(float x) {
     x = kron_fmodf(x, KRON_TWO_PI);
     if      (x >  KRON_PI) x -= KRON_TWO_PI;
     else if (x < -KRON_PI) x += KRON_TWO_PI;
 
-    if (x > KRON_HALF_PI) {
-        return -cos_core(KRON_PI - x);         /* cos(x) = -cos(π-x) */
-    }
-    if (x < -KRON_HALF_PI) {
-        return -cos_core(KRON_PI + x);         /* cos(x) = -cos(π+x) */
-    }
-    /* Near π/2: cos(x) = sin(π/2 - x); sin_core is accurate near 0 */
-    if (x > 0.78539816f) {                     /* x ∈ (π/4, π/2] */
+    if (x > KRON_HALF_PI)
+        return -cos_core(KRON_PI - x);
+    if (x < -KRON_HALF_PI)
+        return -cos_core(KRON_PI + x);
+    if (x > 0.78539816f)
         return sin_core(KRON_HALF_PI - x);
-    }
-    if (x < -0.78539816f) {                    /* x ∈ [-π/2, -π/4) */
+    if (x < -0.78539816f)
         return sin_core(KRON_HALF_PI + x);
-    }
     return cos_core(x);
 }
 
-float KRON_TAN(float x) {
-    float c = KRON_COS(x);
-    if (c == 0.0f) return 3.4028235e38f;   /* near singularity */
-    return KRON_SIN(x) / c;
-}
-
-/* Two-level range reduction for atan:
- *   |x| > 1         → π/2 − atan(1/x)
- *   |x| > tan(π/8)  → π/4 − atan((1−x)/(1+x))
- *   otherwise       → atan_core(x)                          */
-float KRON_ATAN(float x) {
+/* ─────────────────────────────────────────────────────────
+ * Internal: full-range atan
+ * ───────────────────────────────────────────────────────── */
+static float kron_atanf(float x) {
     float sign = (x < 0.0f) ? -1.0f : 1.0f;
     x = kron_fabsf(x);
 
     float result;
     if (x > 1.0f) {
         float x_inv = 1.0f / x;
-        if (x_inv > 0.41421356f) { /* tan(π/8) = √2 − 1 */
+        if (x_inv > 0.41421356f) {
             result = KRON_HALF_PI -
                      (0.78539816f - atan_core((1.0f - x_inv) / (1.0f + x_inv)));
         } else {
@@ -253,14 +168,227 @@ float KRON_ATAN(float x) {
     return sign * result;
 }
 
-float KRON_ASIN(float x) {
-    if (x >=  1.0f) return  KRON_HALF_PI;
-    if (x <= -1.0f) return -KRON_HALF_PI;
-    float t = 1.0f - x * x;
-    if (t <= 0.0f)  return (x >= 0.0f) ? KRON_HALF_PI : -KRON_HALF_PI;
-    return KRON_ATAN(x / KRON_SQRT(t));
+/* ─────────────────────────────────────────────────────────
+ * Internal: sqrt (Newton-Raphson)
+ * ───────────────────────────────────────────────────────── */
+static float kron_sqrtf(float x) {
+    if (x <= 0.0f) return 0.0f;
+
+    union { float f; uint32_t u; } v;
+    v.f = x;
+    v.u = 0x1fbd1df5u + (v.u >> 1u);
+    float g = v.f;
+
+    g = 0.5f * (g + x / g);
+    g = 0.5f * (g + x / g);
+    g = 0.5f * (g + x / g);
+    g = 0.5f * (g + x / g);
+    return g;
 }
 
-float KRON_ACOS(float x) {
-    return KRON_HALF_PI - KRON_ASIN(x);
+/* =========================================================
+ * ADD
+ * ========================================================= */
+
+void ADD_F_Call(ADD_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 + inst->IN2;
+    inst->ENO = true;
+}
+
+void ADD_I_Call(ADD_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 + inst->IN2;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * SUB
+ * ========================================================= */
+
+void SUB_F_Call(SUB_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 - inst->IN2;
+    inst->ENO = true;
+}
+
+void SUB_I_Call(SUB_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 - inst->IN2;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * MUL
+ * ========================================================= */
+
+void MUL_F_Call(MUL_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 * inst->IN2;
+    inst->ENO = true;
+}
+
+void MUL_I_Call(MUL_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN1 * inst->IN2;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * DIV — ENO = false on div-by-zero
+ * ========================================================= */
+
+void DIV_F_Call(DIV_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    if (inst->IN2 == 0.0f) { inst->OUT = 0.0f; inst->ENO = false; return; }
+    inst->OUT = inst->IN1 / inst->IN2;
+    inst->ENO = true;
+}
+
+void DIV_I_Call(DIV_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    if (inst->IN2 == 0) { inst->OUT = 0; inst->ENO = false; return; }
+    inst->OUT = inst->IN1 / inst->IN2;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * MOD — ENO = false on div-by-zero
+ * ========================================================= */
+
+void MOD_F_Call(MOD_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    if (inst->IN2 == 0.0f) { inst->OUT = 0.0f; inst->ENO = false; return; }
+    inst->OUT = kron_fmodf(inst->IN1, inst->IN2);
+    inst->ENO = true;
+}
+
+void MOD_I_Call(MOD_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    if (inst->IN2 == 0) { inst->OUT = 0; inst->ENO = false; return; }
+    inst->OUT = inst->IN1 % inst->IN2;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * MOVE
+ * ========================================================= */
+
+void MOVE_F_Call(MOVE_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN;
+    inst->ENO = true;
+}
+
+void MOVE_I_Call(MOVE_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = inst->IN;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * ABS
+ * ========================================================= */
+
+void ABS_F_Call(ABS_F *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = kron_fabsf(inst->IN);
+    inst->ENO = true;
+}
+
+void ABS_I_Call(ABS_I *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = (inst->IN < 0) ? -inst->IN : inst->IN;
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * SQRT — ENO = false for negative input
+ * ========================================================= */
+
+void SQRT_Call(SQRT_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    if (inst->IN < 0.0f) { inst->OUT = 0.0f; inst->ENO = false; return; }
+    inst->OUT = kron_sqrtf(inst->IN);
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * EXPT — ENO = false for negative base
+ * ========================================================= */
+
+void EXPT_Call(EXPT_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    float base = inst->IN1;
+    float exponent = inst->IN2;
+    if (base < 0.0f) { inst->OUT = 0.0f; inst->ENO = false; return; }
+    if (base == 0.0f) {
+        inst->OUT = (exponent == 0.0f) ? 1.0f : 0.0f;
+        inst->ENO = true;
+        return;
+    }
+    inst->OUT = kron_expf(exponent * kron_logf(base));
+    inst->ENO = true;
+}
+
+/* =========================================================
+ * Trigonometric Functions
+ * ========================================================= */
+
+void SIN_Call(SIN_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = kron_sinf(inst->IN);
+    inst->ENO = true;
+}
+
+void COS_Call(COS_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = kron_cosf(inst->IN);
+    inst->ENO = true;
+}
+
+void TAN_Call(TAN_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    float c = kron_cosf(inst->IN);
+    if (c == 0.0f) { inst->OUT = 3.4028235e38f; inst->ENO = false; return; }
+    inst->OUT = kron_sinf(inst->IN) / c;
+    inst->ENO = true;
+}
+
+void ASIN_Call(ASIN_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    float x = inst->IN;
+    if (x >=  1.0f) { inst->OUT =  KRON_HALF_PI; inst->ENO = true; return; }
+    if (x <= -1.0f) { inst->OUT = -KRON_HALF_PI; inst->ENO = true; return; }
+    float t = 1.0f - x * x;
+    if (t <= 0.0f) {
+        inst->OUT = (x >= 0.0f) ? KRON_HALF_PI : -KRON_HALF_PI;
+        inst->ENO = true;
+        return;
+    }
+    inst->OUT = kron_atanf(x / kron_sqrtf(t));
+    inst->ENO = true;
+}
+
+void ACOS_Call(ACOS_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    float x = inst->IN;
+    float asin_val;
+    if (x >=  1.0f)      asin_val =  KRON_HALF_PI;
+    else if (x <= -1.0f)  asin_val = -KRON_HALF_PI;
+    else {
+        float t = 1.0f - x * x;
+        if (t <= 0.0f)
+            asin_val = (x >= 0.0f) ? KRON_HALF_PI : -KRON_HALF_PI;
+        else
+            asin_val = kron_atanf(x / kron_sqrtf(t));
+    }
+    inst->OUT = KRON_HALF_PI - asin_val;
+    inst->ENO = true;
+}
+
+void ATAN_Call(ATAN_FB *inst) {
+    if (!inst->EN) { inst->ENO = false; return; }
+    inst->OUT = kron_atanf(inst->IN);
+    inst->ENO = true;
 }
