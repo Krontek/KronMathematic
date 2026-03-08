@@ -16,6 +16,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#define __int8_t_defined
 
 /*
  * PLC Integer Type Mapping (IEC 61131-3, 32-bit max):
