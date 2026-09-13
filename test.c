@@ -410,6 +410,83 @@ static void test_type_promotion(void) {
 // ─────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Regression: N clamping and SQRT overflow
+// ─────────────────────────────────────────────
+static void test_hardening(void) {
+    printf("\n--- Hardening (N bounds, SQRT overflow) ---\n");
+
+    // N is a plain FB field, so a program can set it past the array size.
+    // Every multi-input block must clamp to KRON_MATH_MAX_IN.
+    {
+        ADD a = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) a.IN[i] = 1;
+        a.N = 200;                      // far beyond IN[32]
+        ADD_Call(&a);
+        check("ADD: N=200 clamped to 32", a.OUT == KRON_MATH_MAX_IN);
+    }
+    {
+        AVG v = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) v.IN[i] = 8;
+        v.N = 255;
+        AVG_Call(&v);
+        check("AVG: N=255 clamped (divides by 32, not 255)", v.OUT == 8);
+    }
+    {
+        MIN_FB m = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) m.IN[i] = 100 + i;
+        m.N = 250;
+        MIN_Call(&m);
+        check("MIN: N=250 clamped", m.OUT == 100);
+    }
+    {
+        MAX_FB m = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) m.IN[i] = 100 + i;
+        m.N = 250;
+        MAX_Call(&m);
+        check("MAX: N=250 clamped", m.OUT == 100 + KRON_MATH_MAX_IN - 1);
+    }
+    {
+        MUL m = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) m.IN[i] = 1;
+        m.N = 200;
+        MUL_Call(&m);
+        check("MUL: N=200 clamped", m.OUT == 1);
+    }
+    {
+        MUX m = {0};
+        for (int i = 0; i < KRON_MATH_MAX_IN; i++) m.IN[i] = i;
+        m.N = 200;
+        m.K = 40;                       // inside the bogus N, outside IN[]
+        MUX_Call(&m);
+        check("MUX: K past array rejected even when N is bogus", m.ERR == true);
+        m.K = 5;
+        MUX_Call(&m);
+        check("MUX: K inside array still works", m.OUT == 5 && m.ERR == false);
+    }
+
+    // SQRT must not overflow its Newton-Raphson step at INT32_MAX.
+    {
+        SQRT_FB q = {0};
+        q.IN = 2147483647;
+        SQRT_Call(&q);
+        check("SQRT: INT32_MAX -> 46340 (no overflow)",
+              q.OUT == 46340 && q.ERR == false);
+
+        q.IN = 2147395600;              // 46340^2 exactly
+        SQRT_Call(&q);
+        check("SQRT: 46340^2 -> 46340", q.OUT == 46340);
+
+        q.IN = 2000000000;
+        SQRT_Call(&q);
+        check("SQRT: 2000000000 -> 44721", q.OUT == 44721);
+
+        q.IN = 1;
+        SQRT_Call(&q);
+        check("SQRT: 1 -> 1", q.OUT == 1);
+    }
+}
+
 int main(void) {
     printf("=== KronMathematic Test Suite ===\n");
 
@@ -429,6 +506,7 @@ int main(void) {
     test_MUX();
     test_AVG();
     test_type_promotion();
+    test_hardening();
 
     printf("\n=== Results: %d passed, %d failed ===\n", pass_count, fail_count);
     return fail_count ? 1 : 0;

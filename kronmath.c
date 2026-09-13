@@ -1,9 +1,16 @@
 #include "kronmath.h"
 
+/* Multi-input blocks expose N as a plain FB field, so a program can set it to
+ * any uint8_t value. Clamp it to the array capacity before indexing IN[]. */
+static inline uint8_t kron_math_clamp_n(uint8_t n) {
+    return (n > KRON_MATH_MAX_IN) ? (uint8_t)KRON_MATH_MAX_IN : n;
+}
+
 // ADD — Sum of N inputs
 void ADD_Call(ADD *inst) {
+    uint8_t n = kron_math_clamp_n(inst->N);
     int32_t sum = 0;
-    for (uint8_t i = 0; i < inst->N; i++) {
+    for (uint8_t i = 0; i < n; i++) {
         sum += inst->IN[i];
     }
     inst->OUT = sum;
@@ -16,8 +23,9 @@ void SUB_Call(SUB *inst) {
 
 // MUL — Product of N inputs
 void MUL_Call(MUL *inst) {
+    uint8_t n = kron_math_clamp_n(inst->N);
     int32_t product = 1;
-    for (uint8_t i = 0; i < inst->N; i++) {
+    for (uint8_t i = 0; i < n; i++) {
         product *= inst->IN[i];
     }
     inst->OUT = product;
@@ -72,12 +80,15 @@ void SQRT_Call(SQRT_FB *inst) {
         inst->ERR = false;
         return;
     }
-    int32_t x = inst->IN;
-    int32_t g = x;
+    /* Newton-Raphson in uint32_t. The first step computes (g + x/g), which
+     * overflows int32_t when IN == INT32_MAX; unsigned arithmetic keeps every
+     * intermediate representable (the sum never exceeds x + 1). */
+    uint32_t x = (uint32_t)inst->IN;
+    uint32_t g = (x / 2u) + 1u;
     while (g > x / g) {
-        g = (g + x / g) / 2;
+        g = (g + x / g) / 2u;
     }
-    inst->OUT = g;
+    inst->OUT = (int32_t)g;
     inst->ERR = false;
 }
 
@@ -104,9 +115,10 @@ void EXPT_Call(EXPT *inst) {
 
 // MIN — Minimum of N inputs
 void MIN_Call(MIN_FB *inst) {
-    if (inst->N == 0) { inst->OUT = 0; return; }
+    uint8_t n = kron_math_clamp_n(inst->N);
+    if (n == 0) { inst->OUT = 0; return; }
     int32_t min = inst->IN[0];
-    for (uint8_t i = 1; i < inst->N; i++) {
+    for (uint8_t i = 1; i < n; i++) {
         if (inst->IN[i] < min) {
             min = inst->IN[i];
         }
@@ -116,9 +128,10 @@ void MIN_Call(MIN_FB *inst) {
 
 // MAX — Maximum of N inputs
 void MAX_Call(MAX_FB *inst) {
-    if (inst->N == 0) { inst->OUT = 0; return; }
+    uint8_t n = kron_math_clamp_n(inst->N);
+    if (n == 0) { inst->OUT = 0; return; }
     int32_t max = inst->IN[0];
-    for (uint8_t i = 1; i < inst->N; i++) {
+    for (uint8_t i = 1; i < n; i++) {
         if (inst->IN[i] > max) {
             max = inst->IN[i];
         }
@@ -143,7 +156,8 @@ void SEL_Call(SEL *inst) {
 
 // MUX — Multiplexer
 void MUX_Call(MUX *inst) {
-    if (inst->K >= inst->N) {
+    uint8_t n = kron_math_clamp_n(inst->N);
+    if (inst->K >= n) {
         inst->OUT = 0;
         inst->ERR = true;
         return;
@@ -154,10 +168,11 @@ void MUX_Call(MUX *inst) {
 
 // AVG — Average of N inputs (integer, truncated)
 void AVG_Call(AVG *inst) {
-    if (inst->N == 0) { inst->OUT = 0; return; }
+    uint8_t n = kron_math_clamp_n(inst->N);
+    if (n == 0) { inst->OUT = 0; return; }
     int32_t sum = 0;
-    for (uint8_t i = 0; i < inst->N; i++) {
+    for (uint8_t i = 0; i < n; i++) {
         sum += inst->IN[i];
     }
-    inst->OUT = sum / inst->N;
+    inst->OUT = sum / n;
 }
